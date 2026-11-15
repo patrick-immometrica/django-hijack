@@ -93,10 +93,8 @@ class TestHijackRemoteUserMiddleware:
 
     def test_process_response__html(self, rf, monkeypatch):
         request = rf.get("/")
-        request.user = get_user_model()
-        request.user.is_hijacked = True
         request.session = SessionStore("some_session_key")
-        request.session.accessed = True
+        request.session["hijack_history"] = ["1"]
         request.META["CSRF_COOKIE"] = "123456"
         render_to_string = MagicMock()
         response = HttpResponse("")
@@ -107,6 +105,15 @@ class TestHijackRemoteUserMiddleware:
             {"request": request},
             request=request,
         )
+
+    def test_process_response__does_not_load_user(self, rf):
+        request = rf.get("/")
+        request.user = SimpleLazyObject(MagicMock(side_effect=AssertionError))
+        request.session = SessionStore("some_session_key")
+        request.session.accessed = True
+        response = HttpResponse(b"<body></body>")
+        assert self.middleware.process_response(request, response) is response
+        assert response.content == b"<body></body>"
 
     def test_process_response__non_html(self, rf, monkeypatch):
         request = rf.get("/")
@@ -121,10 +128,8 @@ class TestHijackRemoteUserMiddleware:
 
     def test_process_response__content_length(self, rf, monkeypatch):
         request = rf.get("/")
-        request.user = get_user_model()
-        request.user.is_hijacked = True
         request.session = SessionStore("some_session_key")
-        request.session.accessed = True
+        request.session["hijack_history"] = ["1"]
         request.META["CSRF_COOKIE"] = "123456"
         render_to_string = MagicMock()
         render_to_string.return_value = "HIJACKED"
