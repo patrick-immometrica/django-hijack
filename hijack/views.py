@@ -28,8 +28,10 @@ def keep_session_age(session):
     except KeyError:
         yield
     else:
-        yield
-        session["_session_expiry"] = session_expiry
+        try:
+            yield
+        finally:
+            session["_session_expiry"] = session_expiry
 
 
 class SuccessUrlMixin:
